@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Wall Coverage Visualization</title>
+        <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .left-panel {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .right-panel {
+            flex: 2;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        canvas {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .primary-button {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .primary-button:hover {
+            background-color: #45a049;
+        }
+        .secondary-button {
+            background-color: #2196F3;
+            color: white;
+        }
+        .secondary-button:hover {
+            background-color: #1976D2;
+        }
+        .danger-button {
+            background-color: #f44336;
+            color: white;
+        }
+        .danger-button:hover {
+            background-color: #d32f2f;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .obstacle-list {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .obstacle-item {
+            background: #f8f9fa;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stats {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .speed-control input {
+            flex: 1;
+        }
+    </style>
+    </head>
+    <body>
+        <h1>Wall Coverage Robot Control</h1>
+        <div class="container">
+            <div class="left-panel">
+                <h2>Configuration</h2>
+                <div class="form-group">
+                    <label for="wallWidth">Wall Width (m)</label>
+                    <input type="number" id="wallWidth" value="5.0" step="0.1"
+                        min="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="wallHeight">Wall Height (m)</label>
+                    <input type="number" id="wallHeight" value="5.0" step="0.1"
+                        min="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="stepSize">Step Size (m)</label>
+                    <input type="number" id="stepSize" value="0.25" step="0.05"
+                        min="0.05">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="optimizePath" checked>
+                        Optimize Path
+                    </label>
+                </div>
+                <h3>Add Obstacle</h3>
+                <div class="form-group">
+                    <label for="obstacleType">Type</label>
+                    <select id="obstacleType">
+                        <option value="rectangle">Rectangle</option>
+                        <option value="circle">Circle</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="obstacleX">X Position (m)</label>
+                    <input type="number" id="obstacleX" value="1.0" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="obstacleY">Y Position (m)</label>
+                    <input type="number" id="obstacleY" value="1.0" step="0.1">
+                </div>
+                <div class="form-group" id="rectangleDimensions">
+                    <label for="obstacleWidth">Width (m)</label>
+                    <input type="number" id="obstacleWidth" value="0.5"
+                        step="0.1" min="0.1">
+                    <label for="obstacleHeight">Height (m)</label>
+                    <input type="number" id="obstacleHeight" value="0.5"
+                        step="0.1" min="0.1">
+                </div>
+                <div class="form-group" id="circleDimensions"
+                    style="display: none;">
+                    <label for="obstacleRadius">Radius (m)</label>
+                    <input type="number" id="obstacleRadius" value="0.3"
+                        step="0.1" min="0.1">
+                </div>
+                <button class="primary-button" onclick="addObstacle()">Add
+                    Obstacle</button>
+                <div class="obstacle-list" id="obstacleList"></div>
+                <button class="secondary-button" onclick="planTrajectory()">Plan
+                    Trajectory</button>
+                <button class="danger-button" onclick="clearTrajectory()">Clear
+                    Trajectory</button>
+            </div>
+            <div class="right-panel">
+                <h2>Visualization</h2>
+                <canvas id="trajectoryCanvas" width="800" height="600"></canvas>
+                <div class="controls">
+                    <button class="primary-button" id="playButton">Play</button>
+                    <button class="secondary-button"
+                        id="pauseButton">Pause</button>
+                    <button class="secondary-button"
+                        id="resetButton">Reset</button>
+                    <div class="speed-control">
+                        <label for="playbackSpeed">Speed:</label>
+                        <input type="range" id="playbackSpeed" min="1" max="10"
+                            value="5">
+                        <span id="speedValue">5x</span>
+                    </div>
+                </div>
+                <div class="stats" id="stats">
+                    <p>Points: <span id="pointCount">0</span></p>
+                    <p>Execution Time: <span id="executionTime">0</span>s</p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        const canvas = document.getElementById('trajectoryCanvas');
+        const ctx = canvas.getContext('2d');
+        const playButton = document.getElementById('playButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const resetButton = document.getElementById('resetButton');
+        const obstacleType = document.getElementById('obstacleType');
+        const rectangleDimensions = document.getElementById('rectangleDimensions');
+        const circleDimensions = document.getElementById('circleDimensions');
+
+        let trajectoryPoints = [];
+        let obstacles = [];
+        let currentPointIndex = 0;
+        let isPlaying = false;
+        let animationFrameId = null;
+        let playbackSpeed = 5;
+
+        // Event Listeners
+        obstacleType.addEventListener('change', function() {
+            if (this.value === 'rectangle') {
+                rectangleDimensions.style.display = 'block';
+                circleDimensions.style.display = 'none';
+            } else {
+                rectangleDimensions.style.display = 'none';
+                circleDimensions.style.display = 'block';
+            }
+        });
+
+        document.getElementById('playbackSpeed').addEventListener('input', function(e) {
+            playbackSpeed = parseInt(e.target.value);
+            document.getElementById('speedValue').textContent = `${playbackSpeed}x`;
+        });
+
+        // Functions
+        function addObstacle() {
+            const type = obstacleType.value;
+            const x = parseFloat(document.getElementById('obstacleX').value);
+            const y = parseFloat(document.getElementById('obstacleY').value);
+            
+            let obstacle;
+            if (type === 'rectangle') {
+                const width = parseFloat(document.getElementById('obstacleWidth').value);
+                const height = parseFloat(document.getElementById('obstacleHeight').value);
+                obstacle = { type, x, y, width, height };
+            } else {
+                const radius = parseFloat(document.getElementById('obstacleRadius').value);
+                obstacle = { type, x, y, radius };
+            }
+            
+            obstacles.push(obstacle);
+            updateObstacleList();
+            drawTrajectory();
+        }
+
+        function updateObstacleList() {
+            const list = document.getElementById('obstacleList');
+            list.innerHTML = obstacles.map((obs, index) => `
+                <div class="obstacle-item">
+                    <span>${obs.type} at (${obs.x}, ${obs.y})</span>
+                    <button class="danger-button" onclick="removeObstacle(${index})">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        function removeObstacle(index) {
+            obstacles.splice(index, 1);
+            updateObstacleList();
+            drawTrajectory();
+        }
+
+        async function planTrajectory() {
+            const width = parseFloat(document.getElementById('wallWidth').value);
+            const height = parseFloat(document.getElementById('wallHeight').value);
+            const stepSize = parseFloat(document.getElementById('stepSize').value);
+            const optimize = document.getElementById('optimizePath').checked;
+
+            try {
+                const response = await fetch('http://localhost:8000/plan/rectangular/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        width,
+                        height,
+                        step_size: stepSize,
+                        obstacles,
+                        optimize
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                document.getElementById('pointCount').textContent = data.points_generated;
+                document.getElementById('executionTime').textContent = data.execution_time.toFixed(2);
+                
+                await fetchTrajectory();
+            } catch (error) {
+                console.error('Error planning trajectory:', error);
+                alert('Error planning trajectory: ' + error.message);
+            }
+        }
+
+        async function clearTrajectory() {
+            try {
+                const response = await fetch('http://localhost:8000/trajectory/', {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                trajectoryPoints = [];
+                drawTrajectory();
+            } catch (error) {
+                console.error('Error clearing trajectory:', error);
+                alert('Error clearing trajectory: ' + error.message);
+            }
+        }
+
+        async function fetchTrajectory() {
+            try {
+                const response = await fetch('http://localhost:8000/trajectory/');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                trajectoryPoints = data.map(point => ({ x: point.x, y: point.y }));
+                drawTrajectory();
+            } catch (error) {
+                console.error('Error fetching trajectory:', error);
+            }
+        }
+
+        function drawTrajectory() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw obstacles
+            const scale = Math.min(canvas.width, canvas.height) / 5;
+            const offsetX = canvas.width / 2;
+            const offsetY = canvas.height / 2;
+
+            obstacles.forEach(obs => {
+                ctx.beginPath();
+                if (obs.type === 'rectangle') {
+                    ctx.rect(
+                        offsetX + obs.x * scale,
+                        offsetY - obs.y * scale,
+                        obs.width * scale,
+                        -obs.height * scale
+                    );
+                } else {
+                    ctx.arc(
+                        offsetX + obs.x * scale,
+                        offsetY - obs.y * scale,
+                        obs.radius * scale,
+                        0,
+                        2 * Math.PI
+                    );
+                }
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                ctx.fill();
+                ctx.strokeStyle = 'red';
+                ctx.stroke();
+            });
+
+            // Draw trajectory
+            if (trajectoryPoints.length > 0) {
+                ctx.beginPath();
+                ctx.strokeStyle = 'blue';
+                ctx.lineWidth = 2;
+
+                ctx.moveTo(offsetX + trajectoryPoints[0].x * scale, offsetY - trajectoryPoints[0].y * scale);
+                for (let i = 1; i < trajectoryPoints.length; i++) {
+                    ctx.lineTo(offsetX + trajectoryPoints[i].x * scale, offsetY - trajectoryPoints[i].y * scale);
+                }
+                ctx.stroke();
+            }
+        }
+
+        function drawCurrentPoint() {
+            if (currentPointIndex < trajectoryPoints.length) {
+                const scale = Math.min(canvas.width, canvas.height) / 5;
+                const offsetX = canvas.width / 2;
+                const offsetY = canvas.height / 2;
+
+                ctx.beginPath();
+                ctx.arc(
+                    offsetX + trajectoryPoints[currentPointIndex].x * scale,
+                    offsetY - trajectoryPoints[currentPointIndex].y * scale,
+                    5,
+                    0,
+                    2 * Math.PI
+                );
+                ctx.fillStyle = 'red';
+                ctx.fill();
+            }
+        }
+
+        function animate() {
+            if (!isPlaying) return;
+
+            drawTrajectory();
+            drawCurrentPoint();
+
+            currentPointIndex += playbackSpeed;
+            if (currentPointIndex >= trajectoryPoints.length) {
+                currentPointIndex = 0;
+            }
+
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        playButton.addEventListener('click', () => {
+            if (!isPlaying) {
+                isPlaying = true;
+                animate();
+            }
+        });
+
+        pauseButton.addEventListener('click', () => {
+            isPlaying = false;
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+        });
+
+        resetButton.addEventListener('click', () => {
+            isPlaying = false;
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            currentPointIndex = 0;
+            drawTrajectory();
+        });
+
+        // Initial fetch and draw
+        fetchTrajectory();
+    </script>
+    </body>
+</html>
