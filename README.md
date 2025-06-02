@@ -7,6 +7,7 @@ This project implements a backend and frontend for an autonomous wall-finishing 
 1. **Install Dependencies**
 
    Make sure you have Python 3.7+ installed.
+   
    Clone repository : https://github.com/vengadesh-max/Wall-Coverage-Robot-Control.git
 
    Run the dependency installation script from the project root:
