@@ -32,4 +32,7 @@ This script will:
 2. Start the frontend server using Python's built-in `http.server` on `http://localhost:3000`.
 3. Open your default web browser to `http://localhost:3000`.
 
+   ![Screenshot (1766)](https://github.com/user-attachments/assets/0d126e1a-084e-4858-8e8f-8efddd7e5b5c)
+
+
 To stop both servers, press `Ctrl+C` in the terminal where you ran the `run.py` script.
